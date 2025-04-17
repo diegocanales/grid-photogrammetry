@@ -1,47 +1,275 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grid Photogrammetry</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grid Photogrammetry</title>
+  <link rel="stylesheet" href="./reset.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
+  <meta property="og:title" content="Grid Photogrammetry">
+  <meta property="og:description" content="A tool for a generate photogrammetry paths">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://robertspark.github.io/grid-photogrammetry/assets/open-graph.png"/>
+  <meta property="og:image:width" content="720px"/>
+  <meta property="og:image:width" content="720px"/>
+  <meta property="og:image:type" content="image/png" />
+  <meta name="robots" content="index, follow" />
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
     
-    <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
+    article {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      width: 100%;
+      height: 100vh;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    code {
+      padding: 8px;
+      height: 50vh;
+      overflow: scroll;
+      display: block;
+    }
     
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Leaflet.draw CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
+    #toggle-panel {
+      display: none;
+    }
+    
+    #control-panel {
+      padding: 8px;
+      width: 100%;
+      background-color: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      z-index: 10;
+      height: 100vh;
+      overflow-y: auto;
+      box-sizing: border-box;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    header {
+      position: relative;
+      margin: 0 20px 20px;
+    }
+    
+    h2 {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    
+    #close-panel {
+      position: absolute;
+      right: 0;
+      top: 0;
+      cursor: pointer;
+    }
+    
+    .search-section {
+      text-align: center;
+      margin-bottom: 12px;
+      font-family: monospace;
+    }
+    
+    input[type="text"] {
+      border: 1px solid #ccc;
+      text-align: center;
+      width: 192px;
+    }
+    
+    button {
+      padding: 8px 16px;
+      font-weight: 600;
+      font-size: 14px;
+      background-color: #0ea5e9;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      margin-left: 8px;
+      cursor: pointer;
+    }
+    
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 320px;
+      margin: 0 auto 20px;
+      font-family: monospace;
+    }
+    
+    .align-middle {
+      vertical-align: middle;
+    }
+    
+    input[type="number"] {
+      border: 1px solid #ccc;
+      text-align: right;
+      width: 96px;
+    }
+    
+    select {
+      border: 1px solid #ccc;
+      text-align: left;
+      width: 160px;
+    }
+    
+    .stats {
+      font-family: monospace;
+      margin-bottom: 12px;
+      margin-left: 8px;
+    }
+    
+    .camera-section {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    
+    .download-section {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    
+    #download-csv {
+      border-radius: 0;
+    }
+  </style>
 </head>
+
 <body>
-    <div id="container">
+  <article>
+    <div id="control">
+      <div id="control-panel">
         <header>
-            <h1>Grid Photogrammetry</h1>
+          <h2>Grid Photogrammetry</h2>
         </header>
         
-        <main>
-            <div id="map"></div>
-            <div id="control-panel">
-                <!-- Control panel content will go here -->
-            </div>
-        </main>
+        <div class="search-section">
+          <label for="location-query">Location:</label>
+          <input
+            id="location-query"
+            type="text"
+            placeholder="Enter a location"
+          />
+          <button id="search-location">Search</button>
+        </div>
+        
+        <div class="form-grid">
+          <label>Drone Model:</label>
+          <span class="align-middle">
+            <select id="drone-model" type="number">
+              <option value="custom">Custom</option>
+              <!-- Drone models will be populated from JS -->
+            </select>
+          </span>
+          
+          <label>Focal Length:</label>
+          <span class="align-middle">
+            <input 
+              id="focal-length"
+              type="number"
+              value="8.4"
+              max="100" min="0"
+              step="0.01"
+            /> [mm]
+          </span>
+          
+          <label>Image Width:</label>
+          <span class="align-middle">
+            <input id="image-width" type="number" value="5472" max="100000" min="0" step="1"/> [px]
+          </span>
+          
+          <label>Image Height:</label>
+          <span class="align-middle">
+            <input id="image-height" type="number" value="3648" max="100000" min="0" step="1"/> [px]
+          </span>
+          
+          <label>Sensor Width:</label>
+          <span class="align-middle">
+            <input id="sensor-width" type="number" value="13.31" max="100" min="0" step="0.01"/> [mm]
+          </span>
+          
+          <label>Sensor Height:</label>
+          <span class="align-middle">
+            <input id="sensor-height" type="number" value="8.88" max="100" min="0" step="0.01"/> [mm]
+          </span>
+          
+          <label>Fly Height:</label>
+          <span class="align-middle">
+            <input id="fly-height" type="number" value="50" max="1000" min="0" step="10"/> [m]
+          </span>
+          
+          <label>Angle:</label>
+          <span class="align-middle">
+            <input id="angle" type="number" value="270" max="360" min="0" step="1"/> [º]
+          </span>
+          
+          <label>Overlap:</label>
+          <span class="align-middle">
+            <input id="overlap" type="number" value="80" max="99" min="0" step="1"/> [%]
+          </span>
+          
+          <label>Sidelap:</label>
+          <span class="align-middle">
+            <input id="sidelap" type="number" value="80" max="99" min="0" step="1"/> [%]
+          </span>
+          
+          <label>Show Frames:</label>
+          <span class="align-middle">
+            <input id="show-frames" type="checkbox" />
+          </span>
+          
+          <label>Show Cameras:</label>
+          <span class="align-middle">
+            <input id="show-cameras" type="checkbox" checked />
+          </span>
+        </div>
+        
+        <div class="stats">
+          <div>GDS<sub>w</sub> = <span id="gds-w">0 cm</span></div>
+          <div>GDS<sub>h</sub> = <span id="gds-h">0 cm</span></div>
+          <div>Coverage<sub>w</sub> = <span id="coverage-w">0 m</span></div>
+          <div>Coverage<sub>h</sub> = <span id="coverage-h">0 m</span></div>
+          <div>Area = <span id="area">0</span> m²</div>
+          <div>Step = <span id="step">0</span> m</div>
+          <div>Images = <span id="images">0</span></div>
+        </div>
+        
+        <div class="camera-section">
+          <label>Cam Angle:</label>
+          <span class="align-middle">
+            <input id="camera-angle" type="number" value="-90" max="0" min="-90" step="1"/> [º]
+          </span>
+        </div>
+        
+        <div class="download-section">
+          <button id="download-csv">
+            Download Nadir Litchi CSV
+          </button>
+        </div>
+      </div>
     </div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Leaflet.draw JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <!-- Turf.js -->
-    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
-    
-    <!-- Application JS -->
-    <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/map.js"></script>
-    <script src="js/drawing.js"></script>
-    <script src="js/controls.js"></script>
-    <script src="js/services.js"></script>
+    <div id="map"></div>
+  </article>
+  <script type="module" src="./droneModels.js"></script>
+  <script type="module" src="./index.js"></script>
 </body>
 </html>
