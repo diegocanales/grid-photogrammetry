@@ -49,6 +49,32 @@
     
     #toggle-panel {
       display: none;
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background-color: white;
+      border: none;
+      border-radius: 4px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+      cursor: pointer;
+      padding: 8px;
+    }
+    
+    @media (max-width: 768px) {
+      article {
+        grid-template-columns: 1fr;
+      }
+      
+      #control-panel {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      
+      #toggle-panel {
+        display: block;
+      }
     }
     
     #control-panel {
@@ -157,9 +183,11 @@
 <body>
   <article>
     <div id="control">
+      <button id="toggle-panel" class="material-symbols-outlined">menu</button>
       <div id="control-panel">
         <header>
           <h2>Grid Photogrammetry</h2>
+          <span id="close-panel" class="material-symbols-outlined">close</span>
         </header>
         
         <div class="search-section">
